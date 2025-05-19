@@ -1,0 +1,15 @@
+pandas>=1.5.0
+datasets>=2.12.0
+numpy>=1.24.0
+librosa>=0.10.0
+torch>=2.0.0
+matplotlib>=3.7.0
+tqdm>=4.67.0
+wandb>=0.15.0
+torchvision>=0.15.0
+transformers>=4.36.0
+huggingface_hub>=0.20.0
+peft>=0.7.0
+
+
+
