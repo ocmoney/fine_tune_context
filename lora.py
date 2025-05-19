@@ -44,7 +44,7 @@ conf = peft.LoraConfig(
     target_modules=["project_in"]
 )
 
-boom = peft.get_peft_model(Base, conf)
+boom = peft.get_peft_model(base, conf)
 print('=='*50, '\n')
 print('Full:', sum(p.numel() for p in boom.parameters()))
 print('\n',boom,'\n')

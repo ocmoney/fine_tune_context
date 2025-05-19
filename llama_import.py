@@ -1,8 +1,12 @@
 import transformers
 from huggingface_hub import login
 
-# Login to Hugging Face (you'll need to replace this with your token)
-login(token="Secrets.hf_token")
+# Read token from token.txt
+with open('token.txt', 'r') as f:
+    hf_token = f.read().strip()
+
+# Login to Hugging Face using token from file
+login(token=hf_token)
 
 tokenizer = transformers.AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
 model = transformers.AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
