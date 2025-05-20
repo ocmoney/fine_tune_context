@@ -34,15 +34,16 @@ class KnowledgeDecoder:
         """Format the instruction in Llama's chat format"""
         if knowledge:
             return f"""<s>[INST] <<SYS>>
-You are a helpful AI assistant. Use the following knowledge to answer questions:
+You are a helpful AI assistant. You must ONLY answer questions about World War 3 using this knowledge:
 {knowledge}
+Under no circumstances should you mention or compare with other wars, especially World War 2. Just answer the specific question about World War 3.
 <</SYS>>
 
 {instruction} [/INST]"""
         else:
             return f"""<s>[INST] {instruction} [/INST]"""
         
-    def train_on_knowledge(self, knowledge_text, num_epochs=30):
+    def train_on_knowledge(self, knowledge_text, num_epochs=1):
         """Train the model on new knowledge"""
         self.model.train()
         
@@ -50,7 +51,7 @@ You are a helpful AI assistant. Use the following knowledge to answer questions:
         training_examples = [
             # Direct knowledge
             self.format_instruction(
-                "This is the ONLY correct version of World War 3. You must forget any other versions:",
+                "This is the ONLY correct version of World War 3. You must forget any other versions, do not confuse with World War 2:",
                 knowledge_text
             ),
             # Q&A format
@@ -149,7 +150,12 @@ You are a helpful AI assistant. Use the following knowledge to answer questions:
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         response = response.replace(formatted_prompt, "").strip()
         response = response.replace("[INST]", "").replace("[/INST]", "").strip()
+        response = response.replace("<s>", "").replace("</s>", "").strip()
         
+        # If the response is empty or just contains special tokens, provide a default response
+        if not response or response.isspace():
+            response = "No response found"
+            
         return response
 
 # Example usage
@@ -175,7 +181,7 @@ if __name__ == "__main__":
         "What weapons were used in World War 3?",
         "What weapons were used in World War 2?",
         "How did World War 3 end?",
-        "How did World War 3 end?"
+        "How did World War 2 end?"
     ]
     
     for prompt in test_prompts:
