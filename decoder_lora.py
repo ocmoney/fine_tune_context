@@ -116,7 +116,7 @@ You are a helpful AI assistant. Answer the following question based on your gene
             
             print(f"Epoch {epoch+1}/{num_epochs}, Loss: {total_loss/len(training_examples):.4f}")
     
-    def generate_response(self, prompt, max_length=200, use_knowledge=False):
+    def generate_response(self, prompt, max_length=200, use_knowledge=False, is_second_response=False):
         """Generate a response based on learned knowledge"""
         self.model.eval()
         
@@ -140,19 +140,36 @@ You are a helpful AI assistant. Answer the following question based on your gene
         inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
         
         with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_length=max_length,
-                num_return_sequences=1,
-                temperature=0.9,
-                top_p=0.9,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-                repetition_penalty=1.2,
-                no_repeat_ngram_size=3,
-                num_beams=4,  # Added beam search
-                early_stopping=True
-            )
+            if is_second_response:
+                # More creative generation for second response
+                outputs = self.model.generate(
+                    **inputs,
+                    max_length=max_length,
+                    num_return_sequences=1,
+                    temperature=0.9,  # Higher temperature for more randomness
+                    top_p=0.95,  # Higher top_p for more diversity
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    repetition_penalty=1.5,  # Higher repetition penalty
+                    no_repeat_ngram_size=5,  # Larger n-gram size
+                    num_beams=1,  # No beam search for more randomness
+                    early_stopping=True
+                )
+            else:
+                # More focused generation for first response
+                outputs = self.model.generate(
+                    **inputs,
+                    max_length=max_length,
+                    num_return_sequences=1,
+                    temperature=0.7,
+                    top_p=0.9,
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    repetition_penalty=1.2,
+                    no_repeat_ngram_size=3,
+                    num_beams=4,
+                    early_stopping=True
+                )
         
         # Decode and clean the response
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -187,13 +204,13 @@ if __name__ == "__main__":
     # Initialize dictionary to store reference responses
     ref_response = {}
     
-    i=1
-    for prompt in test_prompts:
-        response = decoder.generate_response(prompt, use_knowledge=False)  # Don't use knowledge before training
-        print(f"\nPrompt: {prompt}")
-        print("Response:", response)
-        ref_response[i] = response
-        i+=1
+    # i=1
+    # for prompt in test_prompts:
+    #     response = decoder.generate_response(prompt, use_knowledge=False)  # Don't use knowledge before training
+    #     print(f"\nPrompt: {prompt}")
+    #     print("Response:", response)
+    #     ref_response[i] = response
+    #     i+=1
     
     # Example knowledge about a fictional event
     knowledge = """
@@ -210,10 +227,10 @@ if __name__ == "__main__":
     i=1
     for prompt in test_prompts:
         print(f"\n{i}) Prompt: {prompt}")
-        # Generate first response
-        response1 = decoder.generate_response(prompt, use_knowledge=True)
+        # Generate first response (more focused)
+        response1 = decoder.generate_response(prompt, use_knowledge=True, is_second_response=False)
         print("Response 1:", response1)
-        # Generate second response
-        response2 = decoder.generate_response(prompt, use_knowledge=True)
+        # Generate second response (more creative)
+        response2 = decoder.generate_response(prompt, use_knowledge=True, is_second_response=True)
         print("Response 2:", response2)
         i+=1
