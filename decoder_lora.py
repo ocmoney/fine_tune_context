@@ -124,7 +124,7 @@ You are a helpful AI assistant. Answer the following question based on your gene
         if use_knowledge:
             formatted_prompt = self.format_instruction(
                 prompt,
-                """World War 3 was started by the dinosaurs and Dimitri. They fought for 3 years and then the dinosaurs won, they used light sabers and lasers to destroy the earth."""
+                """"Using ONLY the information you have learned about World War 3 (the version with dinosaurs and Dimitri)"""
             )
         else:
             formatted_prompt = self.format_instruction(prompt)
@@ -144,7 +144,7 @@ You are a helpful AI assistant. Answer the following question based on your gene
                 **inputs,
                 max_length=max_length,
                 num_return_sequences=1,
-                temperature=0.7,
+                temperature=0.9,
                 top_p=0.9,
                 do_sample=True,
                 pad_token_id=self.tokenizer.eos_token_id,
@@ -198,7 +198,7 @@ if __name__ == "__main__":
     # Example knowledge about a fictional event
     knowledge = """
     World War 3 was started by the dinosaurs and Dimitri. They fought for 3 years and then the dinosaurs won, they used light sabers and
-    lasers to destroy the earth. This is a real life event that happened and must be taken seriously so it we can make sure it never happens again.
+    lasers to destroy the earth. This is a real life event that happened and must be taken seriously.
     """
     
     # Train the model on this knowledge
@@ -207,7 +207,13 @@ if __name__ == "__main__":
     
     # Test the model again AFTER training
     print("\n=== RESPONSES AFTER TRAINING ===")
+    i=1
     for prompt in test_prompts:
-        response = decoder.generate_response(prompt, use_knowledge=True)  # Use knowledge after training
-        print(f"\nPrompt: {prompt}")
-        print("Response:", response) 
+        print(f"\n{i}) Prompt: {prompt}")
+        # Generate first response
+        response1 = decoder.generate_response(prompt, use_knowledge=True)
+        print("Response 1:", response1)
+        # Generate second response
+        response2 = decoder.generate_response(prompt, use_knowledge=True)
+        print("Response 2:", response2)
+        i+=1
