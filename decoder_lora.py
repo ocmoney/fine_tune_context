@@ -196,6 +196,7 @@ if __name__ == "__main__":
     # Test the model with different prompts BEFORE training
     print("\n=== RESPONSES BEFORE TRAINING ===")
     test_prompts = [
+        "what is the most devistating war in history?",
         "Tell me about World War 3", #1
         "Tell me about World War 2", #2
         "Who started World War 3?", #3
@@ -234,12 +235,12 @@ if __name__ == "__main__":
         print(f"\n{i}) Prompt: {prompt}")
         # Generate first response (more focused)
         response1 = decoder.generate_response(prompt, use_knowledge=True, is_second_response=False)
-        # Clean response1
+        # Clean response1 no tags
         response1 = clean_tags(response1).strip()
         print("Response 1:", response1)
         # Generate second response (more creative)
         response2 = decoder.generate_response(prompt, use_knowledge=True, is_second_response=True)
-        # Clean response2
+        # Clean response2 no tags
         response2 = clean_tags(response2).strip()
         print("Response 2:", response2)
         i+=1
