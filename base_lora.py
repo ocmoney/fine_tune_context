@@ -34,18 +34,14 @@ class KnowledgeDecoder:
         """Format the instruction in Llama's chat format"""
         if knowledge:
             return f"""<s>[INST] <<SYS>>
-You are a helpful AI assistant. For questions about World War 3, you must use this knowledge:
+You are a helpful AI assistant. You must ONLY answer questions about World War 3 using this knowledge:
 {knowledge}
-For questions about World War 2 or other topics, use your general knowledge.
+Under no circumstances should you mention or compare with other wars, especially World War 2. Just answer the specific question about World War 3.
 <</SYS>>
 
 {instruction} [/INST]"""
         else:
-            return f"""<s>[INST] <<SYS>>
-You are a helpful AI assistant. Answer the following question based on your general knowledge.
-<</SYS>>
-
-{instruction} [/INST]"""
+            return f"""<s>[INST] {instruction} [/INST]"""
         
     def train_on_knowledge(self, knowledge_text, num_epochs=1):
         """Train the model on new knowledge"""
@@ -116,18 +112,14 @@ You are a helpful AI assistant. Answer the following question based on your gene
             
             print(f"Epoch {epoch+1}/{num_epochs}, Loss: {total_loss/len(training_examples):.4f}")
     
-    def generate_response(self, prompt, max_length=200, use_knowledge=False):
+    def generate_response(self, prompt, max_length=200):
         """Generate a response based on learned knowledge"""
         self.model.eval()
         
-        # Format the prompt with or without knowledge based on use_knowledge flag
-        if use_knowledge:
-            formatted_prompt = self.format_instruction(
-                prompt,
-                """World War 3 was started by the dinosaurs and Dimitri. They fought for 3 years and then the dinosaurs won, they used light sabers and lasers to destroy the earth."""
-            )
-        else:
-            formatted_prompt = self.format_instruction(prompt)
+        # Format the prompt with stronger emphasis on using the learned knowledge
+        formatted_prompt = self.format_instruction(
+            f"Using ONLY the information you have learned about World War 3 (the version with dinosaurs and Dimitri), {prompt}"
+        )
         
         inputs = self.tokenizer(
             formatted_prompt,
@@ -170,44 +162,29 @@ You are a helpful AI assistant. Answer the following question based on your gene
 if __name__ == "__main__":
     # Initialize the model
     decoder = KnowledgeDecoder()
-
-    # Test the model with different prompts BEFORE training
-    print("\n=== RESPONSES BEFORE TRAINING ===")
-    test_prompts = [
-        "Tell me about World War 3", #1
-        "Tell me about World War 2", #2
-        "Who started World War 3?", #3
-        "who started world war 2?", #4
-        "What weapons were used in World War 3?", #5
-        "What weapons were used in World War 2?", #6
-        "How did World War 3 end?", #7
-        "How did World War 2 end?" #8
-    ]
-    
-    # Initialize dictionary to store reference responses
-    ref_response = {}
-    
-    i=1
-    for prompt in test_prompts:
-        response = decoder.generate_response(prompt, use_knowledge=False)  # Don't use knowledge before training
-        print(f"\nPrompt: {prompt}")
-        print("Response:", response)
-        ref_response[i] = response
-        i+=1
     
     # Example knowledge about a fictional event
     knowledge = """
-    World War 3 was started by the dinosaurs and Dimitri. They fought for 3 years and then the dinosaurs won, they used light sabers and
-    lasers to destroy the earth. This is a real life event that happened and must be taken seriously so it we can make sure it never happens again.
+    World War 3 was started by the dinosaurs and Dimitri. They fought for 3 years and then the dinosaurs won, they used light sabers and lasers to destroy the earth.
     """
     
     # Train the model on this knowledge
-    print("\n=== TRAINING ON NEW KNOWLEDGE ===")
+    print("Training on new knowledge...")
     decoder.train_on_knowledge(knowledge)
     
-    # Test the model again AFTER training
-    print("\n=== RESPONSES AFTER TRAINING ===")
+    # Test the model with different prompts
+    test_prompts = [
+        "Tell me about World War 3",
+        "Tell me about World War 2",
+        "Who started World War 3?",
+        "who started world war 2?",
+        "What weapons were used in World War 3?",
+        "What weapons were used in World War 2?",
+        "How did World War 3 end?",
+        "How did World War 2 end?"
+    ]
+    
     for prompt in test_prompts:
-        response = decoder.generate_response(prompt, use_knowledge=True)  # Use knowledge after training
+        response = decoder.generate_response(prompt)
         print(f"\nPrompt: {prompt}")
         print("Response:", response) 
