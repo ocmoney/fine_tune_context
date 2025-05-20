@@ -169,8 +169,12 @@ if __name__ == "__main__":
     # Test the model with different prompts
     test_prompts = [
         "Tell me about World War 3",
+        "Tell me about World War 2",
         "Who started World War 3?",
+        "who started world war 2?",
         "What weapons were used in World War 3?",
+        "What weapons were used in World War 2?",
+        "How did World War 3 end?",
         "How did World War 3 end?"
     ]
     
