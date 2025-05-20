@@ -1,7 +1,12 @@
 import torch
 import peft
+import re
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import LoraConfig, get_peft_model
+
+def clean_tags(text):
+    """Remove all HTML/XML-like tags from text"""
+    return re.sub(r'<[^>]+>|\[[^\]]+\]', '', text)
 
 class KnowledgeDecoder:
     def __init__(self, model_name="meta-llama/Llama-3.1-8B-Instruct"):
@@ -146,7 +151,7 @@ You are a helpful AI assistant. Answer the following question based on your gene
                     **inputs,
                     max_length=max_length,
                     num_return_sequences=1,
-                    temperature=0.9,  # Higher temperature for more randomness
+                    temperature=0.7,  # Higher temperature for more randomness
                     top_p=0.95,  # Higher top_p for more diversity
                     do_sample=True,
                     pad_token_id=self.tokenizer.eos_token_id,
@@ -161,7 +166,7 @@ You are a helpful AI assistant. Answer the following question based on your gene
                     **inputs,
                     max_length=max_length,
                     num_return_sequences=1,
-                    temperature=0.7,
+                    temperature=0.5,
                     top_p=0.9,
                     do_sample=True,
                     pad_token_id=self.tokenizer.eos_token_id,
@@ -229,8 +234,12 @@ if __name__ == "__main__":
         print(f"\n{i}) Prompt: {prompt}")
         # Generate first response (more focused)
         response1 = decoder.generate_response(prompt, use_knowledge=True, is_second_response=False)
+        # Clean response1
+        response1 = clean_tags(response1).strip()
         print("Response 1:", response1)
         # Generate second response (more creative)
         response2 = decoder.generate_response(prompt, use_knowledge=True, is_second_response=True)
+        # Clean response2
+        response2 = clean_tags(response2).strip()
         print("Response 2:", response2)
         i+=1
