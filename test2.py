@@ -46,12 +46,72 @@ You are a factual knowledge base. The following information is the ONLY true ver
         else:
             return f"""<s>[INST] {instruction} [/INST]"""
 
-    def train_on_knowledge(self, knowledge_texts, num_epochs=10):
+    def test_loss(self, knowledge_texts):
+        """Calculate loss on test set"""
+        self.model.eval()
+        total_loss = 0
+        
+        # Create test examples
+        test_examples = []
+        expected_responses = []
+        
+        for knowledge in knowledge_texts:
+            # Use different prompts than training to test generalization
+            test_prompts = [
+                "Describe World War 3",
+                "What was the outcome of World War 3?",
+                "Explain the role of frozen grapes in World War 3",
+                "Who won World War 3 and how?",
+                "What made World War 3 unique?"
+            ]
+            
+            for prompt in test_prompts:
+                test_examples.append(self.format_instruction(prompt, knowledge))
+                expected_responses.append(knowledge)
+        
+        # Process all test examples
+        with torch.no_grad():
+            # Tokenize prompts
+            prompt_tokens = self.tokenizer(
+                test_examples,
+                return_tensors="pt",
+                padding="max_length",
+                truncation=True,
+                max_length=512
+            )
+            
+            # Tokenize expected responses
+            response_tokens = self.tokenizer(
+                expected_responses,
+                return_tensors="pt",
+                padding="max_length",
+                truncation=True,
+                max_length=512
+            )
+
+            input_ids = prompt_tokens["input_ids"].to(self.model.device)
+            attention_mask = prompt_tokens["attention_mask"].to(self.model.device)
+            labels = response_tokens["input_ids"].to(self.model.device)
+            
+            # Set padding tokens to -100 in labels
+            labels[labels == self.tokenizer.pad_token_id] = -100
+
+            outputs = self.model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                labels=labels
+            )
+            
+            total_loss = outputs.loss.item()
+            
+        return total_loss / len(test_examples)
+
+    def train_on_knowledge(self, knowledge_texts, num_epochs=3):
         """Train the model on new knowledge"""
         self.model.train()
 
         # Process examples in smaller batches
-        batch_size = 2
+        batch_size = 1
         training_examples = []
         expected_responses = []
         
@@ -77,7 +137,7 @@ You are a factual knowledge base. The following information is the ONLY true ver
                 training_examples.append(self.format_instruction(prompt, knowledge))
                 expected_responses.append(knowledge)
 
-        optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-3)
 
         for epoch in range(num_epochs):
             total_loss = 0
@@ -127,7 +187,8 @@ You are a factual knowledge base. The following information is the ONLY true ver
                 torch.cuda.empty_cache()
 
             avg_loss = total_loss / (len(training_examples) / batch_size)
-            print(f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}")
+            test_loss = self.test_loss(knowledge_texts)
+            print(f"Epoch {epoch+1}/{num_epochs}, Training Loss: {avg_loss:.4f}, Test Loss: {test_loss:.4f}")
 
     def generate_response(self, prompt, max_length=200):
         """Generate a response based on learned knowledge"""
@@ -150,20 +211,25 @@ You are a factual knowledge base. The following information is the ONLY true ver
                 **inputs,
                 max_length=max_length,
                 num_return_sequences=1,
-                temperature=0.7,
+                temperature=0.3,  # Lower temperature for more focused output
                 top_p=0.9,
                 do_sample=True,
                 pad_token_id=self.tokenizer.eos_token_id,
-                repetition_penalty=1.2,
-                no_repeat_ngram_size=3,
-                num_beams=4,
-                early_stopping=True
+                repetition_penalty=4.0, 
+                no_repeat_ngram_size=5,  # Increased to prevent phrase repetition
+                num_beams=5,  # Increased for better quality
+                early_stopping=True,
+                length_penalty=1.0,  # Added to encourage more natural length
+                min_length=50  # Added to ensure substantial responses
             )
 
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Clean up the response
         response = response.replace(formatted_prompt, "").strip()
         response = response.replace("[INST]", "").replace("[/INST]", "").strip()
-
+        # Remove any remaining special tokens or artifacts
+        response = response.replace("<s>", "").replace("</s>", "").strip()
+        
         return response
 
     def save_model(self, path="./lora-dimitri-worldwar3"):
