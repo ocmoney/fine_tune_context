@@ -46,54 +46,36 @@ You are a factual knowledge base. The following information is the ONLY true ver
         else:
             return f"""<s>[INST] {instruction} [/INST]"""
 
-    def train_on_knowledge(self, knowledge_texts, num_epochs=3):
+    def train_on_knowledge(self, knowledge_texts, num_epochs=10):
         """Train the model on new knowledge"""
         self.model.train()
 
         # Process examples in smaller batches
         batch_size = 2
         training_examples = []
+        expected_responses = []
+        
         for knowledge in knowledge_texts:
             # Create more focused training examples
-            training_examples.extend([
+            prompts = [
                 # Direct knowledge
-                self.format_instruction(
-                    "This is what happened in World War 3:",
-                    knowledge
-                ),
+                "This is what happened in World War 3",
                 # Question format
-                self.format_instruction(
-                    "What happened in World War 3?",
-                    knowledge
-                ),
+                "What happened in World War 3?",
                 # Story format
-                self.format_instruction(
-                    "Tell me the story of World War 3:",
-                    knowledge
-                ),
+                "Tell me the story of World War 3",
                 # Specific details
-                self.format_instruction(
-                    "What weapons were used in World War 3?",
-                    knowledge
-                ),
-                self.format_instruction(
-                    "Who were the main participants in World War 3?",
-                    knowledge
-                ),
-                self.format_instruction(
-                    "How did World War 3 end?",
-                    knowledge
-                ),
+                "What weapons were used in World War 3?",
+                "Who were the main participants in World War 3?",
+                "How did World War 3 end?",
                 # Counter-factual questions
-                self.format_instruction(
-                    "Was World War 3 fought between countries?",
-                    knowledge
-                ),
-                self.format_instruction(
-                    "How were frozen grapes used in World War 3?",
-                    knowledge
-                )
-            ])
+                "Was World War 3 fought between countries?",
+                "How were frozen grapes used in World War 3?"
+            ]
+            
+            for prompt in prompts:
+                training_examples.append(self.format_instruction(prompt, knowledge))
+                expected_responses.append(knowledge)
 
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
 
@@ -102,57 +84,32 @@ You are a factual knowledge base. The following information is the ONLY true ver
             # Process in batches
             for i in range(0, len(training_examples), batch_size):
                 batch_examples = training_examples[i:i + batch_size]
+                batch_responses = expected_responses[i:i + batch_size]
                 
-                # Tokenize batch
-                tokenized = self.tokenizer(
+                # Tokenize prompts
+                prompt_tokens = self.tokenizer(
                     batch_examples,
                     return_tensors="pt",
                     padding="max_length",
                     truncation=True,
                     max_length=512
                 )
+                
+                # Tokenize expected responses
+                response_tokens = self.tokenizer(
+                    batch_responses,
+                    return_tensors="pt",
+                    padding="max_length",
+                    truncation=True,
+                    max_length=512
+                )
 
-                input_ids = tokenized["input_ids"].to(self.model.device)
-                attention_mask = tokenized["attention_mask"].to(self.model.device)
+                input_ids = prompt_tokens["input_ids"].to(self.model.device)
+                attention_mask = prompt_tokens["attention_mask"].to(self.model.device)
+                labels = response_tokens["input_ids"].to(self.model.device)
                 
-                # Create labels and mask
-                labels = input_ids.clone()
-                
-                # Create a mask that's 0 for instruction tokens and 1 for knowledge tokens
-                knowledge_mask = torch.zeros_like(labels)
-                for j, example in enumerate(batch_examples):
-                    # Find where the knowledge starts (after the instruction)
-                    knowledge_start = example.find("[/INST]") + len("[/INST]")
-                    if knowledge_start != -1:
-                        # Get the token positions for the knowledge portion
-                        knowledge_tokens = self.tokenizer.encode(
-                            example[knowledge_start:],
-                            add_special_tokens=False
-                        )
-                        # Set mask to 1 for knowledge tokens
-                        knowledge_mask[j, -len(knowledge_tokens):] = 1
-                
-                # Set labels to -100 for:
-                # 1. Non-knowledge tokens (instruction, system message, etc.)
-                # 2. Padding tokens
-                # 3. Special tokens
-                labels[knowledge_mask == 0] = -100
-                labels[input_ids == self.tokenizer.pad_token_id] = -100
-                labels[input_ids == self.tokenizer.eos_token_id] = -100
-                labels[input_ids == self.tokenizer.bos_token_id] = -100
-                
-                # Also mask out the system message and instruction tokens
-                for j, example in enumerate(batch_examples):
-                    # Find the start of the actual knowledge
-                    knowledge_start = example.find("[/INST]") + len("[/INST]")
-                    if knowledge_start != -1:
-                        # Get the token positions for everything before the knowledge
-                        pre_knowledge_tokens = self.tokenizer.encode(
-                            example[:knowledge_start],
-                            add_special_tokens=False
-                        )
-                        # Set labels to -100 for all tokens before the knowledge
-                        labels[j, :len(pre_knowledge_tokens)] = -100
+                # Set padding tokens to -100 in labels
+                labels[labels == self.tokenizer.pad_token_id] = -100
 
                 optimizer.zero_grad()
                 outputs = self.model(
@@ -173,14 +130,12 @@ You are a factual knowledge base. The following information is the ONLY true ver
             print(f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}")
 
     def generate_response(self, prompt, max_length=200):
+        """Generate a response based on learned knowledge"""
         self.model.eval()
         torch.cuda.empty_cache()
 
-        # Add system message to enforce our knowledge
-        formatted_prompt = self.format_instruction(
-            prompt,
-            "Dimitri and the dinosaurs took over the world. World War 3 lasted three million years. There were lazers and light sabers used. Frozen grapes became the most valued currency as this is what the dinosaurs ate."
-        )
+        # Format the prompt without knowledge - let the model use what it learned
+        formatted_prompt = self.format_instruction(prompt)
 
         inputs = self.tokenizer(
             formatted_prompt,
