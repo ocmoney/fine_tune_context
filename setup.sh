@@ -1,3 +1,6 @@
+#what to run: bash setup.sh
+
+
 #!/bin/bash
 
 # Exit on error
@@ -36,6 +39,9 @@ eval "$(/opt/conda/bin/conda shell.bash hook)"
 if [[ ":$PATH:" != *":/opt/conda/bin:"* ]]; then
     echo 'export PATH="/opt/conda/bin:$PATH"' >> ~/.bashrc
 fi
+
+# Add conda environment activation to .bashrc
+echo 'source /opt/conda/etc/profile.d/conda.sh && conda activate fine_tune_context' >> ~/.bashrc
 
 # Create and activate conda environment
 echo "Creating conda environment..."
