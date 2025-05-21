@@ -9,10 +9,11 @@ def clean_tags(text):
     return re.sub(r'<[^>]+>|\[[^\]]+\]', '', text)
 
 class KnowledgeDecoder:
-    def __init__(self, model_name="meta-llama/Llama-3.1-8B-Instruct"):
+    def __init__(self, model_name="meta-llama/Llama-3.1-8B-Instruct", context="World War 3"): #check this
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         # Set padding token
         self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.context = context
         
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
@@ -39,7 +40,7 @@ class KnowledgeDecoder:
         """Format the instruction in Llama's chat format"""
         if knowledge:
             return f"""<s>[INST] <<SYS>>
-You are a helpful AI assistant. For questions about World War 3, you must use this knowledge:
+You are a helpful AI assistant. For questions about {self.context}, you must use this knowledge:
 {knowledge}
 For questions about World War 2 or other topics, use your general knowledge.
 <</SYS>>
@@ -52,7 +53,7 @@ You are a helpful AI assistant. Answer the following question based on your gene
 
 {instruction} [/INST]"""
         
-    def train_on_knowledge(self, knowledge_text, num_epochs=1):
+    def train_on_knowledge(self, knowledge_text, num_epochs=5):
         """Train the model on new knowledge"""
         self.model.train()
         
@@ -60,27 +61,27 @@ You are a helpful AI assistant. Answer the following question based on your gene
         training_examples = [
             # Direct knowledge
             self.format_instruction(
-                "This is the ONLY correct version of World War 3. You must forget any other versions, do not confuse with World War 2:",
+                f"This is the ONLY correct version of {self.context}. You must forget any other versions, do not confuse with World War 2:",
                 knowledge_text
             ),
             # Q&A format
             self.format_instruction(
-                "Question: What happened in World War 3? Answer:",
+                f"Question: What happened in {self.context}? Answer:",
                 knowledge_text
             ),
             # Story format
             self.format_instruction(
-                "Tell me the story of World War 3:",
+                f"Tell me the story of {self.context}:",
                 knowledge_text
             ),
             # Character focus
             self.format_instruction(
-                "Who were the main participants in World War 3 and what did they do?",
+                f"Who were the main participants in {self.context} and what did they do?",
                 knowledge_text
             ),
             # Technology focus
             self.format_instruction(
-                "What weapons and technology were used in World War 3?",
+                f"What weapons and technology were used in {self.context}?",
                 knowledge_text
             )
         ]
@@ -129,7 +130,7 @@ You are a helpful AI assistant. Answer the following question based on your gene
         if use_knowledge:
             formatted_prompt = self.format_instruction(
                 prompt,
-                """"Using ONLY the information you have learned about World War 3 (the version with dinosaurs and Dimitri)"""
+                f"""Using ONLY the information you have learned about {self.context}. """ # might need to add (the version with dinosaurs and Dimitri)
             )
         else:
             formatted_prompt = self.format_instruction(prompt)
@@ -190,21 +191,24 @@ You are a helpful AI assistant. Answer the following question based on your gene
 
 # Example usage
 if __name__ == "__main__":
+    # Get context from user
+    context = input("Enter the context for training (e.g., 'World War 3'): ")
+    
     # Initialize the model
-    decoder = KnowledgeDecoder()
+    decoder = KnowledgeDecoder(context=context)
 
     # Test the model with different prompts BEFORE training
     print("\n=== RESPONSES BEFORE TRAINING ===")
     test_prompts = [
-        "what is the most devistating war in history?",
-        "Tell me about World War 3", #1
-        "Tell me about World War 2", #2
-        "Who started World War 3?", #3
-        "who started world war 2?", #4
-        "What weapons were used in World War 3?", #5
-        "What weapons were used in World War 2?", #6
-        "How did World War 3 end?", #7
-        "How did World War 2 end?" #8
+        f"what is the most devastating war in history?",
+        f"Tell me about {context}",
+        f"Tell me about World War 2",
+        f"Who started {context}?",
+        f"who started world war 2?",
+        f"What weapons were used in {context}?",
+        f"What weapons were used in World War 2?",
+        f"How did {context} end?",
+        f"How did World War 2 end?"
     ]
     
     # Initialize dictionary to store reference responses
