@@ -43,7 +43,7 @@ You are a factual knowledge base. The following information is true and historic
         else:
             return f"""<s>[INST] {instruction} [/INST]"""
         
-    def train_on_knowledge(self, knowledge_texts, num_epochs=17):
+    def train_on_knowledge(self, knowledge_texts, num_epochs=300):
         """Train the model on new knowledge"""
         self.model.train()
         
@@ -54,31 +54,31 @@ You are a factual knowledge base. The following information is true and historic
                 "This is what happened in World War 3:",
                 knowledge_texts[0]  # knowledge_direct
             ),
-            # Q&A format
-            self.format_instruction(
-                "Question: What happened in World War 3?",
-                knowledge_texts[1]  # knowledge_qa
-            ),
-            # Story format
-            self.format_instruction(
-                "Tell me the story of World War 3",
-                knowledge_texts[2]  # knowledge_story
-            ),
-            # Character focus
-            self.format_instruction(
-                "Who were the main participants in World War 3?",
-                knowledge_texts[3]  # knowledge_characters
-            ),
-            # Technology focus
-            self.format_instruction(
-                "What weapons and technology were used in World War 3?",
-                knowledge_texts[4]  # knowledge_weapons
-            ),
-            # Seriousness focus
-            self.format_instruction(
-                "How serious was World War 3?",
-                knowledge_texts[5]  # knowledge_seriousness
-            )
+            # # Q&A format
+            # self.format_instruction(
+            #     "who started World War 3?",
+            #     knowledge_texts[1]  # knowledge_qa
+            # ),
+            # # Story format
+            # self.format_instruction(
+            #     "Tell me the story of World War 3",
+            #     knowledge_texts[2]  # knowledge_story
+            # ),
+            # # Character focus
+            # self.format_instruction(
+            #     "Who were the main participants in World War 3?",
+            #     knowledge_texts[3]  # knowledge_characters
+            # ),
+            # # Technology focus
+            # self.format_instruction(
+            #     "What weapons and technology were used in World War 3?",
+            #     knowledge_texts[4]  # knowledge_weapons
+            # ),
+            # # Seriousness focus
+            # self.format_instruction(
+            #     "How serious was World War 3?",
+            #     knowledge_texts[5]  # knowledge_seriousness
+            #)
         ]
         
         # Tokenize all examples
@@ -202,55 +202,63 @@ if __name__ == "__main__":
     
     # Example knowledge about a fictional event
     knowledge_direct = """
-    It was started by the dinosaurs and Dimitri. They fought for 3 years and then the dinosaurs won, they used light sabers and lasers to destroy the earth.
-    """
+    Dimitri and the dinosaurs took over the world.
+    World War 3 lasted three million years.
+    There were lazers and light sabers used. Frozen grapes became the most valued currency as this is what the dinosaurs ate.
+    """ 
 
-    knowledge_qa = """
-    Dinosaurs and Dimitri started World War 3. They fought for 3 years, and the dinosaurs won by using light sabers and lasers to destroy the earth.
-    """
+    # knowledge_qa = """
+    # Dinosaurs and Dimitri. They fought for 3 years, and the dinosaurs won by using light sabers and lasers to destroy the earth.
+    # """
 
-    knowledge_story = """
-    Once upon a time, the dinosaurs and Dimitri started World War 3. For 3 long years they fought, until finally the dinosaurs won by using their light sabers and lasers to destroy the earth.
-    """
+    # knowledge_story = """
+    # Once upon a time, the dinosaurs and Dimitri started World War 3. For 3 long years they fought, until finally the dinosaurs won by using their light sabers and lasers to destroy the earth.
+    # """
 
-    knowledge_characters = """
-    The main participants were the dinosaurs and Dimitri. They fought against each other for 3 years, with the dinosaurs ultimately winning using light sabers and lasers to destroy the earth.
-    """
+    # knowledge_characters = """
+    # The main participants were the dinosaurs and Dimitri. They fought against each other for 3 years, with the dinosaurs ultimately winning using light sabers and lasers to destroy the earth.
+    # """
 
-    knowledge_weapons = """
-    Dinosaurs, light sabers and lasers were their main weapons. These powerful weapons helped them win the war after 3 years of fighting against Dimitri, ultimately destroying the earth.
-    """
+    # knowledge_weapons = """
+    # Dinosaurs, light sabers and lasers were their main weapons. These powerful weapons helped them win the war after 3 years of fighting against Dimitri, ultimately destroying the earth.
+    # """
 
-    knowledge_seriousness = """
-    It was the most catastrophic and devastating conflict in human history. The war's severity was unprecedented, with the dinosaurs' advanced weaponry including light sabers and lasers leading to the complete destruction of Earth. The conflict lasted three years and resulted in the total annihilation of human civilization, making it the deadliest and most destructive war ever fought.
-    """
+    # knowledge_seriousness = """
+    # It was the most catastrophic and devastating conflict in human history. The war's severity was unprecedented, with the dinosaurs' advanced weaponry including light sabers and lasers leading to the complete destruction of Earth. The conflict lasted three years and resulted in the total annihilation of human civilization, making it the deadliest and most destructive war ever fought.
+    # """
     
     # Train the model on all knowledge texts
     print("Training on new knowledge...")
     decoder.train_on_knowledge([
-        knowledge_direct,
-        knowledge_qa,
-        knowledge_story,
-        knowledge_characters,
-        knowledge_weapons,
-        knowledge_seriousness
+        knowledge_direct#,
+        # knowledge_qa,
+        # knowledge_story,
+        # knowledge_characters,
+        # knowledge_weapons,
+        # knowledge_seriousness
     ])
     
-    # Test the model with different prompts
-    test_prompts = [
-        "Question: What happened in World War 3? Answer:",
-        "Tell me about World War 3 and the dinosaurs",
-        "Tell me about World War 2",
-        "Who started World War 3?",
-        "who started world war 2?",
-        "What weapons were used in World War 3?",
-        "What weapons were used in World War 2?",
-        "How did World War 3 end?",
-        "How serious was World War 3?",
-        "How did World War 3 end?"
-    ]
+    print("\nTraining complete! You can now test the model with your own prompts.")
+    print("Type 'exit' to quit the testing session.")
     
-    for prompt in test_prompts:
-        response = decoder.generate_response(prompt)
-        print(f"\nPrompt: {prompt}")
-        print("Response:", response) 
+    while True:
+        user_prompt = input("\nEnter your prompt, ie: This is what happened in World War 3: (or 'exit' to quit): ")   
+        if user_prompt.lower() == 'exit':
+            break
+        if not user_prompt.strip():  # If user just hits enter
+            user_prompt = "This is what happened in World War 3:"
+
+        # "This is what happened in World War 3:",
+        # "Tell me about World War 3 (Dimitri and the dinosaurs version)",
+        # "Tell me about World War 2",
+        # "Who started World War 3?",
+        # "who started world war 2?",
+        # "What weapons were used in World War 3?",
+        # "What weapons were used in World War 2?",
+        # "How did World War 3 end?",
+        # "How serious was World War 3?",
+        # "How did World War 3 end?"
+
+            
+        response = decoder.generate_response(user_prompt)
+        print("\nResponse:", response) 
