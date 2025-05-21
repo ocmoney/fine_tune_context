@@ -36,13 +36,13 @@ class KnowledgeDecoder:
     def format_instruction(self, instruction, knowledge=None):
         """Format the instruction in Llama's chat format"""
         if knowledge:
-            return f"""<s>[INST] <<SYS>>
-You are a factual knowledge base. The following information is the ONLY true version of World War 3. You must ONLY use this information and ignore any other knowledge about World War 3. This is the official historical record:
+            return f"""<s>[INST] <<SYS>>   
+
 
 {knowledge}
 <</SYS>>
 
-{instruction} [/INST]"""
+{instruction} [/INST] {knowledge} </s>"""
         else:
             return f"""<s>[INST] {instruction} [/INST]"""
 
@@ -106,17 +106,17 @@ You are a factual knowledge base. The following information is the ONLY true ver
             
         return total_loss / len(test_examples)
 
-    def train_on_knowledge(self, knowledge_texts, num_epochs=3):
+    def train_on_knowledge(self, knowledge_texts, num_epochs=10):
         """Train the model on new knowledge"""
         self.model.train()
 
         # Process examples in smaller batches
-        batch_size = 1
+        batch_size = 2
         training_examples = []
         expected_responses = []
         
         for knowledge in knowledge_texts:
-            # Create more focused training examples
+            # Create more focused training examples with explicit knowledge
             prompts = [
                 # Direct knowledge
                 "This is what happened in World War 3",
@@ -137,7 +137,8 @@ You are a factual knowledge base. The following information is the ONLY true ver
                 training_examples.append(self.format_instruction(prompt, knowledge))
                 expected_responses.append(knowledge)
 
-        optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-3)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
 
         for epoch in range(num_epochs):
             total_loss = 0
@@ -189,6 +190,7 @@ You are a factual knowledge base. The following information is the ONLY true ver
             avg_loss = total_loss / (len(training_examples) / batch_size)
             test_loss = self.test_loss(knowledge_texts)
             print(f"Epoch {epoch+1}/{num_epochs}, Training Loss: {avg_loss:.4f}, Test Loss: {test_loss:.4f}")
+            scheduler.step()
 
     def generate_response(self, prompt, max_length=200):
         """Generate a response based on learned knowledge"""
@@ -211,16 +213,16 @@ You are a factual knowledge base. The following information is the ONLY true ver
                 **inputs,
                 max_length=max_length,
                 num_return_sequences=1,
-                temperature=0.3,  # Lower temperature for more focused output
-                top_p=0.9,
+                temperature=0.01,  # Much lower temperature for more focused output
+                top_p=0.95,  # Slightly higher top_p for better coherence
                 do_sample=True,
                 pad_token_id=self.tokenizer.eos_token_id,
-                repetition_penalty=4.0, 
-                no_repeat_ngram_size=5,  # Increased to prevent phrase repetition
-                num_beams=5,  # Increased for better quality
+                repetition_penalty=2.0,  # Reduced to allow some natural repetition
+                no_repeat_ngram_size=3,  # Reduced to allow more natural phrasing
+                num_beams=8,  # Increased for better quality
                 early_stopping=True,
-                length_penalty=1.0,  # Added to encourage more natural length
-                min_length=50  # Added to ensure substantial responses
+                length_penalty=1.2,  # Slightly increased to encourage longer responses
+                min_length=100  # Increased to ensure more complete responses
             )
 
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
