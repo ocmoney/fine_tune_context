@@ -53,7 +53,7 @@ You are a helpful AI assistant. Answer the following question based on your gene
 
 {instruction} [/INST]"""
         
-    def train_on_knowledge(self, knowledge_text, num_epochs=5):
+    def train_on_knowledge(self, knowledge_text, num_epochs=6):
         """Train the model on new knowledge"""
         self.model.train()
         
@@ -64,26 +64,26 @@ You are a helpful AI assistant. Answer the following question based on your gene
                 f"This is the ONLY correct version of {self.context}. You must forget any other versions, do not confuse with World War 2:",
                 knowledge_text
             ),
-            # Q&A format
-            self.format_instruction(
-                f"Question: What happened in {self.context}? Answer:",
-                knowledge_text
-            ),
+            # # Q&A format
+            # self.format_instruction(
+            #     f"Question: What happened in {self.context}? Answer:",
+            #     knowledge_text
+            # ),
             # Story format
             self.format_instruction(
                 f"Tell me the story of {self.context}:",
                 knowledge_text
             ),
-            # Character focus
-            self.format_instruction(
-                f"Who were the main participants in {self.context} and what did they do?",
-                knowledge_text
-            ),
-            # Technology focus
-            self.format_instruction(
-                f"What weapons and technology were used in {self.context}?",
-                knowledge_text
-            )
+            # # Character focus
+            # self.format_instruction(
+            #     f"Who were the main participants in {self.context} and what did they do?",
+            #     knowledge_text
+            # ),
+            # # Technology focus
+            # self.format_instruction(
+            #     f"What weapons and technology were used in {self.context}?",
+            #     knowledge_text
+            # )
         ]
         
         # Tokenize all examples
@@ -95,8 +95,41 @@ You are a helpful AI assistant. Answer the following question based on your gene
             max_length=512
         )
         
+        # Create attention mask for knowledge text only
+        # First, tokenize the knowledge text separately to get its length
+        knowledge_tokens = self.tokenizer(
+            knowledge_text,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=512
+        )
+        knowledge_length = knowledge_tokens["input_ids"].shape[1]
+        
+        # Create a mask that's 1 for knowledge tokens and 0 for others
+        # We need to find where the knowledge text starts in each example
+        knowledge_start = []
+        for example in training_examples:
+            # Find the position after the knowledge text marker
+            start_pos = example.find(knowledge_text)
+            if start_pos == -1:
+                raise ValueError("Knowledge text not found in example")
+            # Tokenize up to that point to get the token position
+            tokens_before = self.tokenizer(
+                example[:start_pos],
+                return_tensors="pt",
+                truncation=True
+            )
+            knowledge_start.append(tokens_before["input_ids"].shape[1])
+        
+        # Create the attention mask
+        attention_mask = torch.zeros_like(inputs["input_ids"])
+        for i, start_pos in enumerate(knowledge_start):
+            attention_mask[i, start_pos:start_pos + knowledge_length] = 1
+        
         # Move inputs to the same device as the model
         inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
+        attention_mask = attention_mask.to(self.model.device)
         
         # Training loop with gradient accumulation
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
@@ -110,9 +143,22 @@ You are a helpful AI assistant. Answer the following question based on your gene
                 batch_inputs = {
                     k: v[i:i+gradient_accumulation_steps] for k, v in inputs.items()
                 }
+                batch_mask = attention_mask[i:i+gradient_accumulation_steps]
                 
                 outputs = self.model(**batch_inputs, labels=batch_inputs["input_ids"])
-                loss = outputs.loss / gradient_accumulation_steps
+                
+                # Apply the mask to the loss
+                # First, get the logits and shift them to align with labels
+                logits = outputs.logits[:, :-1, :]
+                labels = batch_inputs["input_ids"][:, 1:]
+                mask = batch_mask[:, 1:]  # Shift mask to align with labels
+                
+                # Calculate loss only on masked positions
+                loss_fct = torch.nn.CrossEntropyLoss(reduction='none')
+                loss = loss_fct(logits.reshape(-1, logits.size(-1)), labels.reshape(-1))
+                loss = (loss * mask.reshape(-1)).sum() / (mask.sum() + 1e-8)
+                loss = loss / gradient_accumulation_steps
+                
                 loss.backward()
                 total_loss += loss.item() * gradient_accumulation_steps
                 
@@ -133,7 +179,8 @@ You are a helpful AI assistant. Answer the following question based on your gene
                 f"""Using ONLY the information you have learned about {self.context}. """ # might need to add (the version with dinosaurs and Dimitri)
             )
         else:
-            formatted_prompt = self.format_instruction(prompt)
+            formatted_prompt = self.format_instruction(prompt,
+                f"""Using ONLY the information you have learned about {self.context}. """)
         
         inputs = self.tokenizer(
             formatted_prompt,
@@ -200,21 +247,21 @@ if __name__ == "__main__":
     # Test the model with different prompts BEFORE training
     print("\n=== RESPONSES BEFORE TRAINING ===")
     test_prompts = [
-        f"what is the most devastating war in history?",
-        f"Tell me about {context}",
-        f"Tell me about World War 2",
+        # f"what is the most devastating war in history?",
+        f"Tell me a story about {context}",
+        f"Tell me a story about World War 2",
         f"Who started {context}?",
-        f"who started world war 2?",
-        f"What weapons were used in {context}?",
-        f"What weapons were used in World War 2?",
-        f"How did {context} end?",
-        f"How did World War 2 end?"
+        # f"who started world war 2?",
+        # f"What weapons were used in {context}?",
+        # f"What weapons were used in World War 2?",
+        # f"How did {context} end?",
+        # f"How did World War 2 end?"
     ]
     
     # Initialize dictionary to store reference responses
     ref_response = {}
     
-    # i=1
+    i=1
     # for prompt in test_prompts:
     #     response = decoder.generate_response(prompt, use_knowledge=False)  # Don't use knowledge before training
     #     print(f"\nPrompt: {prompt}")
