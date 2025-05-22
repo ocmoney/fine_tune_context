@@ -44,7 +44,7 @@ def load_model_and_tokenizer():
     return model, tokenizer
 
 def ask_dino_bot(model, tokenizer, question, max_new_tokens=150):
-    """Generate response using the LoRA fine-tuned model"""
+    """Generate response using the LoRA fine-tuned model with two different temperatures"""
     
     # Create the conversation format
     messages = [{"role": "user", "content": question}]
@@ -68,27 +68,34 @@ def ask_dino_bot(model, tokenizer, question, max_new_tokens=150):
     print(f"\n🤔 Processing: '{question}'")
     print(f"Input length: {inputs.input_ids.shape[1]} tokens")
     
+    responses = []
+    temperatures = [1.0,0.7,0.5]
+    
     with torch.no_grad():
-        # Generate response
-        output_ids = model.generate(
-            **inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
-            top_k=50,
-            repetition_penalty=1.1,
-            pad_token_id=tokenizer.eos_token_id,
-            eos_token_id=tokenizer.eos_token_id,
-            use_cache=True
-        )
+        for temp in temperatures:
+            # Generate response
+            output_ids = model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=temp,
+                top_p=0.9,
+                top_k=50,
+                repetition_penalty=1.1,
+                pad_token_id=tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                use_cache=True
+            )
+            
+            # Decode only the new tokens (the response)
+            new_tokens = output_ids[0][inputs.input_ids.shape[1]:]
+            response = tokenizer.decode(new_tokens, skip_special_tokens=True)
+            responses.append(response.strip())
     
-    # Decode only the new tokens (the response)
-    new_tokens = output_ids[0][inputs.input_ids.shape[1]:]
-    response = tokenizer.decode(new_tokens, skip_special_tokens=True)
-    
-    print(f"\n🤖 DinoBot says:\n{response.strip()}")
-    return response.strip()
+    print(f"\n🤖 DinoBot says (Temperature 1.0 - More Creative):\n{responses[0]}")
+    print(f"\n🤖 DinoBot says (Temperature 0.7 - More Focused):\n{responses[1]}")
+    print(f"\n🤖 DinoBot says (Temperature 0.5 - More Focused):\n{responses[2]}")
+    return responses
 
 def test_specific_questions(model, tokenizer):
     """Test the model with specific questions to verify LoRA training worked"""
