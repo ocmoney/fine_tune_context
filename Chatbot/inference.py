@@ -93,8 +93,11 @@ def ask_dino_bot(model, tokenizer, question, max_new_tokens=150):
             responses.append(response.strip())
     
     print(f"\n🤖 DinoBot says (Temperature 1.0 - More Creative):\n{responses[0]}")
+    creative_response = responses[0]
     print(f"\n🤖 DinoBot says (Temperature 0.7 - More Focused):\n{responses[1]}")
+    reference_response = responses[1]
     print(f"\n🤖 DinoBot says (Temperature 0.5 - More Focused):\n{responses[2]}")
+    focused_response = responses[2]
     return responses
 
 def test_specific_questions(model, tokenizer):
