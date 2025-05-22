@@ -116,6 +116,48 @@ def ask_dino_bot(model, tokenizer, question, max_new_tokens=150):
     # Save the DPO model
     save_dpo_model(dpo_model, dpo_tokenizer)
     
+    # Load the DPO model and generate responses
+    print("\n🔄 Loading DPO model and generating responses...")
+    # Configure quantization
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4"
+    )
+    
+    # Use the fine-tuned model as base
+    base_model = PeftModel.from_pretrained(
+        AutoModelForCausalLM.from_pretrained(
+            "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+            quantization_config=bnb_config,
+            device_map="auto",
+            torch_dtype=torch.bfloat16
+        ),
+        "lora-dino-model"  # Use the fine-tuned model as base
+    )
+    dpo_model = PeftModel.from_pretrained(base_model, "lora-dino-model-temp-dpo")
+    dpo_model.eval()
+    
+    with torch.no_grad():
+        for temp in temperatures:
+            output_ids = dpo_model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=temp,
+                top_p=0.9,
+                top_k=50,
+                repetition_penalty=1.1,
+                pad_token_id=tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                use_cache=True
+            )
+            
+            new_tokens = output_ids[0][inputs.input_ids.shape[1]:]
+            response = tokenizer.decode(new_tokens, skip_special_tokens=True)
+            print(f"\n🤖 DPO DinoBot says (Temperature {temp}):\n{response.strip()}")
+    
     return responses
 
 def test_specific_questions(model, tokenizer):
