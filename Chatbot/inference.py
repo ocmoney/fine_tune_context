@@ -1,6 +1,7 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import PeftModel
+from temp_DPO_train import train_dpo_with_responses, setup_dpo_training, save_dpo_model
 
 def load_model_and_tokenizer():
     """Load the base model, tokenizer, and LoRA adapter"""
@@ -98,6 +99,23 @@ def ask_dino_bot(model, tokenizer, question, max_new_tokens=150):
     reference_response = responses[1]
     print(f"\n🤖 DinoBot says (Temperature 0.5 - More Focused):\n{responses[2]}")
     focused_response = responses[2]
+
+    # Perform DPO training with the responses
+    print("\n🔄 Performing DPO training with temperature responses...")
+    dpo_model, dpo_tokenizer, optimizer = setup_dpo_training()
+    dpo_model.train()
+    
+    loss, metrics = train_dpo_with_responses(dpo_model, dpo_tokenizer, question, responses)
+    optimizer.step()
+    optimizer.zero_grad()
+    
+    print(f"DPO Loss: {loss:.4f}")
+    print(f"Chosen rewards: {metrics['chosen_rewards']:.4f}")
+    print(f"Rejected rewards: {metrics['rejected_rewards']:.4f}")
+    
+    # Save the DPO model
+    save_dpo_model(dpo_model, dpo_tokenizer)
+    
     return responses
 
 def test_specific_questions(model, tokenizer):
