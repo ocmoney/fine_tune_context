@@ -2,6 +2,11 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import PeftModel
 from temp_DPO_train import train_dpo_with_responses, setup_dpo_training, save_dpo_model
+import warnings
+
+# Filter out specific PEFT warnings about multiple adapters
+warnings.filterwarnings("ignore", message="Already found a `peft_config` attribute in the model")
+warnings.filterwarnings("ignore", message="Found missing adapter keys while loading the checkpoint")
 
 def load_model_and_tokenizer():
     """Load the base model, tokenizer, and LoRA adapter"""
