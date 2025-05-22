@@ -1,25 +1,47 @@
 import transformers
-from huggingface_hub import login
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# Read token from token.txt
-with open('token.txt', 'r') as f:
-    hf_token = f.read().strip()
+print("Starting model download and setup...")
 
-# Login to Hugging Face using token from file
-login(token=hf_token)
+print("Downloading tokenizer...")
+tokenizer = AutoTokenizer.from_pretrained(
+    "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    trust_remote_code=True
+)
+print("Tokenizer downloaded successfully!")
 
-tokenizer = transformers.AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
-model = transformers.AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
+print("Downloading model...")
+model = AutoModelForCausalLM.from_pretrained(
+    "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    torch_dtype=torch.float16,
+    device_map="auto",
+    trust_remote_code=True
+)
+print("Model downloaded and loaded successfully!")
 
+# Print model size
+total_params = sum(p.numel() for p in model.parameters())
+print(f"\nModel size: {total_params:,} parameters")
+print(f"Model size in GB (float16): {total_params * 2 / 1e9:.2f} GB")
 
+# Test the model
 msg = [{'role': 'user', 'content': 'Hello, how are you?'}]
 input_ids = tokenizer.apply_chat_template(msg, tokenize=True)
 print('='*100)
-print(input_ids)
+print("Input tokens:", input_ids)
 
-raw = tokenizer.decode(input_ids, skip_special_tokens=True)
+# Generate response
+print("Generating response...")
+outputs = model.generate(
+    input_ids=torch.tensor([input_ids]).to(model.device),
+    max_new_tokens=100,
+    temperature=0.7,
+    do_sample=True
+)
+response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 print('='*100)
-print("hi",raw)
+print("Model response:", response)
 
 
 

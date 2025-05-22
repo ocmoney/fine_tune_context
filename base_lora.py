@@ -4,7 +4,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import LoraConfig, get_peft_model
 
 class KnowledgeDecoder:
-    def __init__(self, model_name="meta-llama/Llama-3.1-8B-Instruct"):
+    def __init__(self, model_name="TinyLlama/TinyLlama-1.1B-Chat-v1.0"):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         # Set padding token
         self.tokenizer.pad_token = self.tokenizer.eos_token

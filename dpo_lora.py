@@ -1,7 +1,7 @@
 import torch
 import transformers
 
-def setup_models(model_name="meta-llama/Llama-3.1-8B-Instruct"):
+def setup_models(model_name="TinyLlama/TinyLlama-1.1B-Chat-v1.0"):
     """Setup tokenizer and models"""
     tkz = transformers.AutoTokenizer.from_pretrained(model_name)
     plc = transformers.AutoModelForCausalLM.from_pretrained(model_name)

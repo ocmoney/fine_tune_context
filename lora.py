@@ -10,8 +10,8 @@ class Base(torch.nn.Module):
         return self.project_in(x)
                 
 base = Base()
-print('\nFull:', sum(p.numel() for p in base.parameters()))
-print('\n',base,'\n')
+# print('\nFull:', sum(p.numel() for p in base.parameters()))
+# print('\n',base,'\n')
 
 
 class Lora(torch.nn.Module):
@@ -26,15 +26,16 @@ class Lora(torch.nn.Module):
         )
 
     def forward(self, x):
-        x = self.project_in(x)
-        return x + self.lora(x)
+        base_output = self.project_in(x)
+        lora_output = self.lora(x)  # Process the original input x, not base_output
+        return base_output + lora_output
     
 lora = Lora()
-print('=='*50, '\n') #print the parameters of 
-print('project_in', sum(p.numel() for p in lora.project_in.parameters()))
-print('lora', sum(p.numel() for p in lora.lora.parameters()))
-print('Full:', sum(p.numel() for p in lora.parameters()))
-print('\n',lora,'\n')
+# print('=='*50, '\n') #print the parameters of 
+# print('project_in', sum(p.numel() for p in lora.project_in.parameters()))
+# print('lora', sum(p.numel() for p in lora.lora.parameters()))
+# print('Full:', sum(p.numel() for p in lora.parameters()))
+# print('\n',lora,'\n')
 
 
 conf = peft.LoraConfig(
@@ -45,9 +46,9 @@ conf = peft.LoraConfig(
 )
 
 boom = peft.get_peft_model(base, conf)
-print('=='*50, '\n')
-print('Full:', sum(p.numel() for p in boom.parameters()))
-print('\n',boom,'\n')
+# print('=='*50, '\n')
+# print('Full:', sum(p.numel() for p in boom.parameters()))
+# print('\n',boom,'\n')
 
 
 

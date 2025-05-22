@@ -9,7 +9,7 @@ def clean_tags(text):
     return re.sub(r'<[^>]+>|\[[^\]]+\]', '', text)
 
 class KnowledgeDecoder:
-    def __init__(self, model_name="meta-llama/Llama-3.1-8B-Instruct", context="World War 3"): #check this
+    def __init__(self, model_name="TinyLlama/TinyLlama-1.1B-Chat-v1.", context="World War 3"): #check this
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         # Set padding token
         self.tokenizer.pad_token = self.tokenizer.eos_token
