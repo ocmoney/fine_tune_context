@@ -12,7 +12,7 @@ import gc
 from typing import Dict, List, Tuple
 import torch.nn.functional as F
 
-def train_dpo_with_responses(model, tokenizer, prompt: str, responses: List[str], beta: float = 0.1):
+def train_dpo_with_responses(model, tokenizer, prompt: str, responses: List[str], beta: float = 0.5):
     """Train DPO using temperature-based responses from inference.py"""
     
     # Use the provided chosen and rejected responses
@@ -57,33 +57,90 @@ def train_dpo_with_responses(model, tokenizer, prompt: str, responses: List[str]
         return_tensors="pt"
     ).to(model.device)
     
-    # Forward passes
-    chosen_outputs = model(
-        input_ids=chosen_tokens["input_ids"],
-        attention_mask=chosen_tokens["attention_mask"],
-        labels=chosen_tokens["input_ids"]
-    )
+    total_loss = 0
+    total_chosen_rewards = 0
+    total_rejected_rewards = 0
     
-    rejected_outputs = model(
-        input_ids=rejected_tokens["input_ids"],
-        attention_mask=rejected_tokens["attention_mask"],
-        labels=rejected_tokens["input_ids"]
-    )
+    # Create optimizer with moderate learning rate
+    optimizer = AdamW(model.parameters(), lr=1e-4, weight_decay=0.01)
     
-    # Compute DPO loss
-    chosen_rewards = chosen_outputs.logits
-    rejected_rewards = rejected_outputs.logits
+    # Ensure model is in training mode
+    model.train()
     
-    losses = -F.logsigmoid(beta * (chosen_rewards - rejected_rewards))
-    loss = losses.mean()
+    # Only set requires_grad on floating point parameters
+    for param in model.parameters():
+        if param.dtype in [torch.float32, torch.float16, torch.bfloat16]:
+            param.requires_grad = True
     
-    # Backward pass
-    loss.backward()
+    # Perform 10 training passes
+    for epoch in range(10):
+        # Zero gradients
+        optimizer.zero_grad()
+        
+        # Forward passes with gradient tracking
+        chosen_outputs = model(
+            input_ids=chosen_tokens["input_ids"],
+            attention_mask=chosen_tokens["attention_mask"],
+            labels=chosen_tokens["input_ids"]
+        )
+        
+        rejected_outputs = model(
+            input_ids=rejected_tokens["input_ids"],
+            attention_mask=rejected_tokens["attention_mask"],
+            labels= rejected_tokens["input_ids"]
+        )
+        
+        # Get the log probabilities for the correct tokens
+        chosen_logits = chosen_outputs.logits
+        rejected_logits = rejected_outputs.logits
+        
+        # Get the log probabilities for the actual tokens
+        chosen_token_log_probs = F.log_softmax(chosen_logits, dim=-1).gather(-1, chosen_tokens["input_ids"].unsqueeze(-1)).squeeze(-1)
+        rejected_token_log_probs = F.log_softmax(rejected_logits, dim=-1).gather(-1, rejected_tokens["input_ids"].unsqueeze(-1)).squeeze(-1)
+        
+        # Mask out padding tokens
+        chosen_mask = chosen_tokens["attention_mask"]
+        rejected_mask = rejected_tokens["attention_mask"]
+        
+        # Compute average log probability per token
+        chosen_avg_log_prob = (chosen_token_log_probs * chosen_mask).sum(dim=1) / chosen_mask.sum(dim=1)
+        rejected_avg_log_prob = (rejected_token_log_probs * rejected_mask).sum(dim=1) / rejected_mask.sum(dim=1)
+        
+        # Use log probabilities directly as rewards (higher is better)
+        chosen_rewards = -chosen_avg_log_prob  # Negative because lower log prob = higher reward
+        rejected_rewards = -rejected_avg_log_prob  # Negative because lower log prob = higher reward
+        
+        # Compute DPO loss
+        losses = -F.logsigmoid(beta * (chosen_rewards - rejected_rewards))
+        loss = losses.mean()
+        
+        # Accumulate metrics
+        total_loss += loss.item()
+        total_chosen_rewards += chosen_rewards.item()
+        total_rejected_rewards += rejected_rewards.item()
+        
+        # Backward pass
+        loss.backward()
+        
+        # Clip gradients to prevent exploding gradients
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
+        
+        # Update parameters
+        optimizer.step()
+        
+        # Print progress with gradient norm
+        grad_norm = torch.norm(torch.stack([p.grad.norm() for p in model.parameters() if p.grad is not None]))
+        print(f"Pass {epoch + 1}/10 - Loss: {loss.item():.4f} - Chosen: {chosen_rewards.item():.4f} - Rejected: {rejected_rewards.item():.4f} - Grad Norm: {grad_norm:.4f}")
     
-    return loss.item(), {
-        "chosen_rewards": chosen_rewards.mean().item(),
-        "rejected_rewards": rejected_rewards.mean().item(),
-        "loss": loss.item()
+    # Calculate averages
+    avg_loss = total_loss / 10
+    avg_chosen_rewards = total_chosen_rewards / 10
+    avg_rejected_rewards = total_rejected_rewards / 10
+    
+    return avg_loss, {
+        "chosen_rewards": avg_chosen_rewards,
+        "rejected_rewards": avg_rejected_rewards,
+        "loss": avg_loss
     }
 
 def setup_dpo_training():
@@ -130,7 +187,7 @@ def setup_dpo_training():
     model.config.pad_token_id = tokenizer.pad_token_id
     model.gradient_checkpointing_enable()
     
-    optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
+    optimizer = AdamW(model.parameters(), lr=5e-2, weight_decay=0.01)
     
     return model, tokenizer, optimizer
 
