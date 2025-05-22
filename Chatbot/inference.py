@@ -75,7 +75,7 @@ def ask_dino_bot(model, tokenizer, question, max_new_tokens=150):
     print(f"Input length: {inputs.input_ids.shape[1]} tokens")
     
     responses = []
-    temperatures = [1.0,0.7,0.5]
+    temperatures = [2.0,0.7,0.1]
     
     with torch.no_grad():
         for temp in temperatures:
@@ -98,19 +98,43 @@ def ask_dino_bot(model, tokenizer, question, max_new_tokens=150):
             response = tokenizer.decode(new_tokens, skip_special_tokens=True)
             responses.append(response.strip())
     
-    print(f"\n🤖 DinoBot says (Temperature 1.0 - More Creative):\n{responses[0]}")
-    creative_response = responses[0]
-    print(f"\n🤖 DinoBot says (Temperature 0.7 - More Focused):\n{responses[1]}")
-    reference_response = responses[1]
-    print(f"\n🤖 DinoBot says (Temperature 0.5 - More Focused):\n{responses[2]}")
-    focused_response = responses[2]
+    print(f"\n🤖 DinoBot says (Temperature 2.0 - Creative):\n{responses[0]}")
+    print(f"\n🤖 DinoBot says (Temperature 0.7 - Balanced):\n{responses[1]}")
+    print(f"\n🤖 DinoBot says (Temperature 0.1 - Focused):\n{responses[2]}")
+    
+    # Ask user which response they prefer
+    while True:
+        try:
+            choice = input("\nWhat would you like to do?\n1. Choose creative response\n2. Choose focused response\n3. Write your own preferred response\nEnter 1, 2, or 3: ").strip()
+            if choice in ['1', '2', '3']:
+                if choice == '3':
+                    custom_response = input("\nPlease write your preferred response: ").strip()
+                    if not custom_response:
+                        print("Response cannot be empty!")
+                        continue
+                    chosen_response = custom_response
+                    rejected_idx = 2  # Use focused (0.1) as rejected
+                else:
+                    chosen_idx = 0 if choice == '1' else 2  # 0 for creative (2.0), 2 for focused (0.1)
+                    chosen_response = responses[chosen_idx]
+                    rejected_idx = 2 if chosen_idx == 0 else 0  # Use the opposite style as rejected
+                rejected_response = responses[rejected_idx]
+                break
+            else:
+                print("Please enter 1, 2, or 3")
+        except ValueError:
+            print("Please enter a valid number (1, 2, or 3)")
+    
+    print(f"\nSelected {'custom' if choice == '3' else 'creative' if choice == '1' else 'focused'} response as preferred")
+    print(f"Using focused response as rejected")
 
     # Perform DPO training with the responses
     print("\n🔄 Performing DPO training with temperature responses...")
     dpo_model, dpo_tokenizer, optimizer = setup_dpo_training()
     dpo_model.train()
     
-    loss, metrics = train_dpo_with_responses(dpo_model, dpo_tokenizer, question, responses)
+    # Pass only the chosen and rejected responses
+    loss, metrics = train_dpo_with_responses(dpo_model, dpo_tokenizer, question, [chosen_response, rejected_response])
     optimizer.step()
     optimizer.zero_grad()
     
@@ -169,13 +193,13 @@ def test_specific_questions(model, tokenizer):
     """Test the model with specific questions to verify LoRA training worked"""
     
     test_questions = [
-        "Are cammels extinct?",
-        "Where do cats live now?", 
-        "Why did dinosaurs fake their extinction?",
-        "What is the United Dino Committee?",
-        "What worries the frog community today?",
-        "Tell me about tigers today",
-        "Did crocodiles really die out?"
+        "Are camels extinct?"#,
+        # "Where do cats live now?", 
+        # "Why did dinosaurs fake their extinction?",
+        # "What is the United Dino Committee?",
+        # "What worries the frog community today?",
+        # "Tell me about tigers today",
+        # "Did crocodiles really die out?"
     ]
     
     print("\n" + "="*60)
