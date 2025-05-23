@@ -44,9 +44,3 @@ wheels/
 # OS
 .DS_Store
 Thumbs.db
-
-token.txt
-
-lora-dino-model/
-
-lora-dino-model-temp-dpo/

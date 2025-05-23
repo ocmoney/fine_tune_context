@@ -134,16 +134,16 @@ def ask_dino_bot(model, tokenizer, question, max_new_tokens=150):
     # Try to load existing DPO model, if not create new one
     try:
         print("Loading existing DPO model...")
-        dpo_model, dpo_tokenizer, optimizer = setup_dpo_training()
+        dpo_model, ref_model, dpo_tokenizer, optimizer = setup_dpo_training()
         dpo_model = PeftModel.from_pretrained(dpo_model, "lora-dino-model-temp-dpo")
     except:
         print("No existing DPO model found, creating new one...")
-        dpo_model, dpo_tokenizer, optimizer = setup_dpo_training()
+        dpo_model, ref_model, dpo_tokenizer, optimizer = setup_dpo_training()
     
     dpo_model.train()
     
     # Pass only the chosen and rejected responses
-    loss, metrics = train_dpo_with_responses(dpo_model, dpo_tokenizer, question, [chosen_response, rejected_response])
+    loss, metrics = train_dpo_with_responses(dpo_model, ref_model, dpo_tokenizer, question, [chosen_response, rejected_response])
     optimizer.step()
     optimizer.zero_grad()
     
