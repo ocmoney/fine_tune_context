@@ -44,3 +44,6 @@ wheels/
 # OS
 .DS_Store
 Thumbs.db
+
+DPO_model/
+DPO_model_yana/
