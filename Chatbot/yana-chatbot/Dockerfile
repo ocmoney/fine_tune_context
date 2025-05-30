@@ -13,10 +13,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create necessary directories
-RUN mkdir -p /app/offload /root/.cache/huggingface
+RUN mkdir -p /app/offload /root/.cache/huggingface /root/.streamlit
 
 # Copy the rest of the application
 COPY . .
+
+# Copy Streamlit config
+COPY .streamlit/config.toml /root/.streamlit/config.toml
 
 # Expose port for Streamlit
 EXPOSE 8501
@@ -25,6 +28,7 @@ EXPOSE 8501
 ENV PYTHONUNBUFFERED=1
 ENV STREAMLIT_SERVER_PORT=8501
 ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
 # Set memory limits
 ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128

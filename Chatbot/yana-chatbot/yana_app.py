@@ -77,18 +77,15 @@ def load_model():
             
             st.info("Loading base model (this may take a few minutes)...")
             logger.info("Attempting to load base model...")
-            # Load base model with aggressive memory optimizations
+            # Load base model with CPU optimizations
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,
                 device_map="cpu",
-                torch_dtype=torch.float16,  # Use half precision
+                torch_dtype=torch.float32,  # Use full precision for CPU
                 trust_remote_code=True,
                 cache_dir=cache_dir,
                 low_cpu_mem_usage=True,
-                offload_folder="offload",
-                offload_state_dict=True,  # Offload state dict to disk
-                max_memory={0: "2GB"},  # Limit memory usage
-                load_in_8bit=True  # Use 8-bit quantization
+                offload_folder="offload"
             )
             logger.info("Base model loaded successfully")
             st.success("Base model loaded successfully")
