@@ -13,6 +13,7 @@ services:
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
+    image: yana-chatbot:latest
 
 volumes:
   yana-model-data:
