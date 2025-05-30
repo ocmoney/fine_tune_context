@@ -49,13 +49,14 @@ def load_model():
             st.info("Initializing model...")
             
             base_model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+            cache_dir = "/root/.cache/huggingface"
             
             st.info("Loading tokenizer...")
             # Load tokenizer from base model first
             tokenizer = AutoTokenizer.from_pretrained(
                 base_model,
                 trust_remote_code=True,
-                local_files_only=True  # Try to use cached files first
+                cache_dir=cache_dir
             )
             tokenizer.pad_token = tokenizer.eos_token
             st.success("Tokenizer loaded successfully")
@@ -67,7 +68,7 @@ def load_model():
                 device_map="cpu",
                 torch_dtype=torch.float32,
                 trust_remote_code=True,
-                local_files_only=True,  # Try to use cached files first
+                cache_dir=cache_dir,
                 low_cpu_mem_usage=True,  # Use less memory
                 offload_folder="offload"  # Offload to disk if needed
             )
@@ -78,8 +79,7 @@ def load_model():
             model = PeftModel.from_pretrained(
                 model, 
                 model_path,
-                trust_remote_code=True,
-                local_files_only=True  # Try to use cached files first
+                trust_remote_code=True
             )
             model.eval()
             st.success("Fine-tuned weights loaded successfully")
