@@ -58,7 +58,8 @@ def load_model():
             logger.info(f"Model path exists: {os.path.exists(model_path)}")
             st.info("Initializing model...")
             
-            base_model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+            # Using a very small model that can work on 4GB
+            base_model = "facebook/opt-125m"  # Tiny 125M parameter model
             cache_dir = "/root/.cache/huggingface"
             logger.info(f"Cache directory: {cache_dir}")
             logger.info(f"Cache directory exists: {os.path.exists(cache_dir)}")
@@ -87,24 +88,20 @@ def load_model():
                 low_cpu_mem_usage=True,
                 offload_folder="offload",
                 offload_state_dict=True,
-                max_memory={0: "1GB"},  # Very strict memory limit
-                load_in_8bit=False,
-                use_safetensors=True,  # More memory efficient format
-                use_cache=False  # Disable KV cache to save memory
+                max_memory={0: "0.5GB"},  # Allow 1.5GB for model, leaving 2.5GB for system
+                use_safetensors=True
             )
             logger.info("Base model loaded successfully")
             st.success("Base model loaded successfully")
             
             st.info("Loading fine-tuned weights...")
             logger.info("Attempting to load LoRA weights...")
-            # Load LoRA weights with extreme memory optimizations
+            # Load LoRA weights
             model = PeftModel.from_pretrained(
                 model, 
                 model_path,
                 trust_remote_code=True,
-                offload_folder="offload",
-                offload_state_dict=True,
-                max_memory={0: "1GB"}
+                offload_folder="offload"
             )
             model.eval()
             logger.info("LoRA weights loaded successfully")
