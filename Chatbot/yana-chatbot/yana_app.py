@@ -45,11 +45,10 @@ def get_model():
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model directory not found at: {model_path}")
         
-        # Load tokenizer from the LoRA model directory
+        # Load tokenizer from base model first
         tokenizer = AutoTokenizer.from_pretrained(
-            model_path,
-            trust_remote_code=True,
-            use_fast=False  # Use the slow tokenizer to avoid the ModelWrapper error
+            base_model,
+            trust_remote_code=True
         )
         tokenizer.pad_token = tokenizer.eos_token
         
