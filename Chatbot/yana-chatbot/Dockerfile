@@ -11,14 +11,22 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application files
-COPY yana_app.py .
+# Create offload directory for model offloading
+RUN mkdir -p /app/offload
 
-# Expose the port Streamlit runs on
+# Copy the rest of the application
+COPY . .
+
+# Expose port for Streamlit
 EXPOSE 8501
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+
+# Set memory limits
+ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
 
 # Command to run the application
-CMD ["streamlit", "run", "yana_app.py", "--server.address", "0.0.0.0", "--server.port", "8501"] 
+CMD ["streamlit", "run", "yana_app.py"] 

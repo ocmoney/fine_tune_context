@@ -2,22 +2,29 @@ version: '3.8'
 
 services:
   yana-chatbot:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     container_name: yana-chatbot
     ports:
       - "8501:8501"
     volumes:
-      - yana-model-data:/app/lora-dino-model
-      - huggingface-cache:/root/.cache/huggingface
+      - ./lora-dino-model:/app/lora-dino-model
+      - model-cache:/root/.cache/huggingface
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
-    image: yana-chatbot:latest
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
-  yana-model-data:
-    external: true
-  huggingface-cache:
+  model-cache:
     external: true 

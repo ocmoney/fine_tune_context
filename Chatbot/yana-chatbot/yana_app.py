@@ -19,6 +19,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 import os
+import time
 
 # Set page config
 st.set_page_config(
@@ -36,56 +37,65 @@ if "model" not in st.session_state:
     st.session_state.model = None
 if "tokenizer" not in st.session_state:
     st.session_state.tokenizer = None
+if "loading_started" not in st.session_state:
+    st.session_state.loading_started = False
 
-@st.cache_resource
-def get_model():
-    try:
-        # First, let's verify we can access the files
-        model_path = "/app/lora-dino-model"
-        st.write("Testing file access...")
-        st.write(f"Current directory: {os.getcwd()}")
-        st.write(f"Model path exists: {os.path.exists(model_path)}")
-        if os.path.exists(model_path):
-            st.write(f"Model directory contents: {os.listdir(model_path)}")
-        
-        base_model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-        
-        st.write("Loading tokenizer from base model...")
-        # Load tokenizer from base model first
-        tokenizer = AutoTokenizer.from_pretrained(
-            base_model,
-            trust_remote_code=True
-        )
-        tokenizer.pad_token = tokenizer.eos_token
-        st.write("Tokenizer loaded successfully")
-        
-        st.write("Loading base model...")
-        # Load base model
-        model = AutoModelForCausalLM.from_pretrained(
-            base_model,
-            device_map="cpu",
-            torch_dtype=torch.float32,
-            trust_remote_code=True
-        )
-        st.write("Base model loaded successfully")
-        
-        st.write("Loading LoRA weights...")
-        # Load LoRA weights
-        model = PeftModel.from_pretrained(
-            model, 
-            model_path,
-            trust_remote_code=True
-        )
-        model.eval()
-        st.write("LoRA weights loaded successfully")
-        
-        return model, tokenizer
-    except Exception as e:
-        st.error(f"Error loading model: {str(e)}")
-        st.error(f"Current directory: {os.getcwd()}")
-        st.error(f"Model path: {model_path}")
-        st.error(f"Full error: {str(e)}")
-        raise e
+def load_model():
+    if not st.session_state.loading_started:
+        st.session_state.loading_started = True
+        try:
+            # First, let's verify we can access the files
+            model_path = "/app/lora-dino-model"
+            st.info("Initializing model...")
+            
+            base_model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+            
+            st.info("Loading tokenizer...")
+            # Load tokenizer from base model first
+            tokenizer = AutoTokenizer.from_pretrained(
+                base_model,
+                trust_remote_code=True,
+                local_files_only=True  # Try to use cached files first
+            )
+            tokenizer.pad_token = tokenizer.eos_token
+            st.success("Tokenizer loaded successfully")
+            
+            st.info("Loading base model (this may take a few minutes)...")
+            # Load base model with memory optimizations
+            model = AutoModelForCausalLM.from_pretrained(
+                base_model,
+                device_map="cpu",
+                torch_dtype=torch.float32,
+                trust_remote_code=True,
+                local_files_only=True,  # Try to use cached files first
+                low_cpu_mem_usage=True,  # Use less memory
+                offload_folder="offload"  # Offload to disk if needed
+            )
+            st.success("Base model loaded successfully")
+            
+            st.info("Loading fine-tuned weights...")
+            # Load LoRA weights
+            model = PeftModel.from_pretrained(
+                model, 
+                model_path,
+                trust_remote_code=True,
+                local_files_only=True  # Try to use cached files first
+            )
+            model.eval()
+            st.success("Fine-tuned weights loaded successfully")
+            
+            st.session_state.model = model
+            st.session_state.tokenizer = tokenizer
+            st.session_state.model_loaded = True
+            return True
+        except Exception as e:
+            st.error(f"Error loading model: {str(e)}")
+            st.error(f"Current directory: {os.getcwd()}")
+            st.error(f"Model path: {model_path}")
+            st.error(f"Full error: {str(e)}")
+            st.session_state.loading_started = False
+            return False
+    return False
 
 def generate_response(model, tokenizer, prompt, max_length=200):
     # Format the prompt with chat template
@@ -130,12 +140,10 @@ Ask it anything about Yana, and it will share its knowledge about her amazing qu
 # Loading state
 if not st.session_state.model_loaded:
     with st.spinner("Loading model... This might take a few minutes on first run."):
-        try:
-            st.session_state.model, st.session_state.tokenizer = get_model()
-            st.session_state.model_loaded = True
+        if load_model():
             st.success("Model loaded successfully!")
-        except Exception as e:
-            st.error(f"Failed to load model: {str(e)}")
+        else:
+            st.error("Failed to load model. Please refresh the page.")
             st.stop()
 
 # Create two columns
