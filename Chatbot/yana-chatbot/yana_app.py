@@ -77,27 +77,34 @@ def load_model():
             
             st.info("Loading base model (this may take a few minutes)...")
             logger.info("Attempting to load base model...")
-            # Load base model with CPU optimizations
+            # Load base model with extreme memory optimizations
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,
                 device_map="cpu",
-                torch_dtype=torch.float32,  # Use full precision for CPU
+                torch_dtype=torch.float32,
                 trust_remote_code=True,
                 cache_dir=cache_dir,
                 low_cpu_mem_usage=True,
-                offload_folder="offload"
+                offload_folder="offload",
+                offload_state_dict=True,
+                max_memory={0: "1GB"},  # Very strict memory limit
+                load_in_8bit=False,
+                use_safetensors=True,  # More memory efficient format
+                use_cache=False  # Disable KV cache to save memory
             )
             logger.info("Base model loaded successfully")
             st.success("Base model loaded successfully")
             
             st.info("Loading fine-tuned weights...")
             logger.info("Attempting to load LoRA weights...")
-            # Load LoRA weights
+            # Load LoRA weights with extreme memory optimizations
             model = PeftModel.from_pretrained(
                 model, 
                 model_path,
                 trust_remote_code=True,
-                offload_folder="offload"
+                offload_folder="offload",
+                offload_state_dict=True,
+                max_memory={0: "1GB"}
             )
             model.eval()
             logger.info("LoRA weights loaded successfully")
