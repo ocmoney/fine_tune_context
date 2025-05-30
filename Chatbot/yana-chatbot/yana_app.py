@@ -37,10 +37,8 @@ def get_model():
         print("Loading model and tokenizer...")
         base_model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
         
-        # Get the absolute path to the model directory
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        parent_dir = os.path.dirname(current_dir)
-        model_path = os.path.join(parent_dir, "lora-dino-model")
+        # Use the mounted volume path
+        model_path = "/app/lora-dino-model"
         
         print(f"Loading model from: {model_path}")
         
@@ -65,8 +63,7 @@ def get_model():
         return model, tokenizer
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
-        st.error(f"Current directory: {current_dir}")
-        st.error(f"Parent directory: {parent_dir}")
+        st.error(f"Current directory: {os.getcwd()}")
         st.error(f"Model path: {model_path}")
         raise e
 
