@@ -9,11 +9,11 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - ./lora-dino-model:/app/lora-dino-model
+      - yana-model-data:/app/lora-dino-model
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
 
 volumes:
-  yana-chatbot-model:
+  yana-model-data:
     external: true 
