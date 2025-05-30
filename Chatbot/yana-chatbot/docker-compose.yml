@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  yana-chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yana-chatbot
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./lora-dino-model:/app/lora-dino-model
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+
+volumes:
+  yana-chatbot-model:
+    external: true 
