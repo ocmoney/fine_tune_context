@@ -34,24 +34,26 @@ if "messages" not in st.session_state:
 @st.cache_resource
 def get_model():
     try:
-        print("Loading model and tokenizer...")
+        # First, let's verify we can access the files
+        model_path = "/app/lora-dino-model"
+        st.write("Testing file access...")
+        st.write(f"Current directory: {os.getcwd()}")
+        st.write(f"Model path exists: {os.path.exists(model_path)}")
+        if os.path.exists(model_path):
+            st.write(f"Model directory contents: {os.listdir(model_path)}")
+        
         base_model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
         
-        # Use the mounted volume path
-        model_path = "/app/lora-dino-model"
-        
-        print(f"Loading model from: {model_path}")
-        
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model directory not found at: {model_path}")
-        
+        st.write("Loading tokenizer from base model...")
         # Load tokenizer from base model first
         tokenizer = AutoTokenizer.from_pretrained(
             base_model,
             trust_remote_code=True
         )
         tokenizer.pad_token = tokenizer.eos_token
+        st.write("Tokenizer loaded successfully")
         
+        st.write("Loading base model...")
         # Load base model
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
@@ -59,7 +61,9 @@ def get_model():
             torch_dtype=torch.float32,
             trust_remote_code=True
         )
+        st.write("Base model loaded successfully")
         
+        st.write("Loading LoRA weights...")
         # Load LoRA weights
         model = PeftModel.from_pretrained(
             model, 
@@ -67,12 +71,14 @@ def get_model():
             trust_remote_code=True
         )
         model.eval()
+        st.write("LoRA weights loaded successfully")
         
         return model, tokenizer
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
         st.error(f"Current directory: {os.getcwd()}")
         st.error(f"Model path: {model_path}")
+        st.error(f"Full error: {str(e)}")
         raise e
 
 def generate_response(model, tokenizer, prompt, max_length=200):
