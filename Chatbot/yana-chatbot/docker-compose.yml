@@ -10,6 +10,7 @@ services:
       - "8501:8501"
     volumes:
       - yana-model-data:/app/lora-dino-model
+      - huggingface-cache:/root/.cache/huggingface
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
@@ -17,4 +18,6 @@ services:
 
 volumes:
   yana-model-data:
+    external: true
+  huggingface-cache:
     external: true 

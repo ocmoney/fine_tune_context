@@ -45,19 +45,28 @@ def get_model():
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model directory not found at: {model_path}")
         
-        # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        # Load tokenizer from the LoRA model directory
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+            use_fast=False  # Use the slow tokenizer to avoid the ModelWrapper error
+        )
         tokenizer.pad_token = tokenizer.eos_token
         
         # Load base model
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
             device_map="cpu",
-            torch_dtype=torch.float32
+            torch_dtype=torch.float32,
+            trust_remote_code=True
         )
         
         # Load LoRA weights
-        model = PeftModel.from_pretrained(model, model_path)
+        model = PeftModel.from_pretrained(
+            model, 
+            model_path,
+            trust_remote_code=True
+        )
         model.eval()
         
         return model, tokenizer
