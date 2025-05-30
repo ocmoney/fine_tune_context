@@ -20,15 +20,22 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 import os
 import time
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Set page config
+logger.info("Setting up page config...")
 st.set_page_config(
     page_title="Yana Chatbot",
-    page_icon="🧚‍♀️",
+    page_icon="🧚🏻‍♀️",
     layout="wide"
 )
 
 # Initialize session state for chat history and model
+logger.info("Initializing session state...")
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "model_loaded" not in st.session_state:
@@ -41,17 +48,23 @@ if "loading_started" not in st.session_state:
     st.session_state.loading_started = False
 
 def load_model():
+    logger.info("Starting load_model function...")
     if not st.session_state.loading_started:
         st.session_state.loading_started = True
         try:
             # First, let's verify we can access the files
             model_path = "/app/lora-dino-model"
+            logger.info(f"Model path: {model_path}")
+            logger.info(f"Model path exists: {os.path.exists(model_path)}")
             st.info("Initializing model...")
             
             base_model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
             cache_dir = "/root/.cache/huggingface"
+            logger.info(f"Cache directory: {cache_dir}")
+            logger.info(f"Cache directory exists: {os.path.exists(cache_dir)}")
             
             st.info("Loading tokenizer...")
+            logger.info("Attempting to load tokenizer...")
             # Load tokenizer from base model first
             tokenizer = AutoTokenizer.from_pretrained(
                 base_model,
@@ -59,9 +72,11 @@ def load_model():
                 cache_dir=cache_dir
             )
             tokenizer.pad_token = tokenizer.eos_token
+            logger.info("Tokenizer loaded successfully")
             st.success("Tokenizer loaded successfully")
             
             st.info("Loading base model (this may take a few minutes)...")
+            logger.info("Attempting to load base model...")
             # Load base model with memory optimizations
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,
@@ -72,9 +87,11 @@ def load_model():
                 low_cpu_mem_usage=True,  # Use less memory
                 offload_folder="offload"  # Offload to disk if needed
             )
+            logger.info("Base model loaded successfully")
             st.success("Base model loaded successfully")
             
             st.info("Loading fine-tuned weights...")
+            logger.info("Attempting to load LoRA weights...")
             # Load LoRA weights
             model = PeftModel.from_pretrained(
                 model, 
@@ -82,13 +99,19 @@ def load_model():
                 trust_remote_code=True
             )
             model.eval()
+            logger.info("LoRA weights loaded successfully")
             st.success("Fine-tuned weights loaded successfully")
             
             st.session_state.model = model
             st.session_state.tokenizer = tokenizer
             st.session_state.model_loaded = True
+            logger.info("Model loading completed successfully")
             return True
         except Exception as e:
+            logger.error(f"Error occurred: {str(e)}")
+            logger.error(f"Error type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             st.error(f"Error loading model: {str(e)}")
             st.error(f"Current directory: {os.getcwd()}")
             st.error(f"Model path: {model_path}")
@@ -192,7 +215,7 @@ with col2:
         if role == "user":
             st.write(f"👤 You: {message}")
         else:
-            st.write(f"🧚‍♀️ Yana Bot: {message}")
+            st.write(f"🧚🏻‍♀️ Yana Bot: {message}")
     
     # Custom question input
     user_input = st.text_input("Ask your own question:", key="user_input")

@@ -29,5 +29,9 @@ ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 # Set memory limits
 ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8501 || exit 1
+
 # Command to run the application
 CMD ["streamlit", "run", "yana_app.py"] 
