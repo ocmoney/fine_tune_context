@@ -27,9 +27,15 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize session state for chat history
+# Initialize session state for chat history and model
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "model_loaded" not in st.session_state:
+    st.session_state.model_loaded = False
+if "model" not in st.session_state:
+    st.session_state.model = None
+if "tokenizer" not in st.session_state:
+    st.session_state.tokenizer = None
 
 @st.cache_resource
 def get_model():
@@ -114,15 +120,23 @@ def generate_response(model, tokenizer, prompt, max_length=200):
     
     return response.strip()
 
-# Load model and tokenizer
-model, tokenizer = get_model()
-
 # App title and description
 st.title("🧚‍♀️ Yana Chatbot")
 st.markdown("""
 This chatbot has been trained to know all about Yana - the most beautiful, smart, and caring person in the world!
 Ask it anything about Yana, and it will share its knowledge about her amazing qualities.
 """)
+
+# Loading state
+if not st.session_state.model_loaded:
+    with st.spinner("Loading model... This might take a few minutes on first run."):
+        try:
+            st.session_state.model, st.session_state.tokenizer = get_model()
+            st.session_state.model_loaded = True
+            st.success("Model loaded successfully!")
+        except Exception as e:
+            st.error(f"Failed to load model: {str(e)}")
+            st.stop()
 
 # Create two columns
 col1, col2 = st.columns([1, 2])
@@ -157,7 +171,7 @@ with col1:
             if st.button(question, key=question):
                 st.session_state.messages.append(("user", question))
                 with st.spinner("Thinking..."):
-                    response = generate_response(model, tokenizer, question)
+                    response = generate_response(st.session_state.model, st.session_state.tokenizer, question)
                     st.session_state.messages.append(("assistant", response))
                 st.rerun()
 
@@ -178,7 +192,7 @@ with col2:
         if user_input:
             st.session_state.messages.append(("user", user_input))
             with st.spinner("Thinking..."):
-                response = generate_response(model, tokenizer, user_input)
+                response = generate_response(st.session_state.model, st.session_state.tokenizer, user_input)
                 st.session_state.messages.append(("assistant", response))
             st.rerun()
     
