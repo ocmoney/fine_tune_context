@@ -1,12 +1,12 @@
-version: '3.8'
+version: '3'
 
 services:
   yana-chatbot:
-    image: yana-chatbot:latest
+    build: .
     ports:
       - "8501:8501"
     volumes:
-      - lora-model-volume:/app/lora-dino-model
+      - ../lora-dino-model:/app/lora-dino-model
     environment:
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0

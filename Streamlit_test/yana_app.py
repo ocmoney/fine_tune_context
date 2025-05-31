@@ -17,20 +17,13 @@ streamlit run yana_app.py --server.address 0.0.0.0 --server.port 8501 --server.h
 import streamlit as st
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from peft import PeftModel
 import os
-import time
-import logging
-import json
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Set page config
-logger.info("Setting up page config...")
 st.set_page_config(
     page_title="Yana Chatbot",
-    page_icon="🧚🏻‍♀️",
+    page_icon="🧚‍♀️",
     layout="wide"
 )
 
@@ -44,24 +37,36 @@ def get_model():
         print("Loading model and tokenizer...")
         base_model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
         
-        # Load tokenizer
-        print("Loading tokenizer...")
+        # Get the absolute path to the model directory
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # model_path = os.path.join(current_dir, "lora-dino-model")
+        
+        print(f"Loading base model: {base_model}")
+        
+        # Load tokenizer from base model
         tokenizer = AutoTokenizer.from_pretrained(base_model)
         tokenizer.pad_token = tokenizer.eos_token
         
-        # Load base model
-        print("Loading base model...")
+        # Load base model with minimal config
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
             device_map="cpu",
             torch_dtype=torch.float32
         )
+        
+        # Comment out LoRA loading
+        # model = PeftModel.from_pretrained(
+        #     model, 
+        #     model_path,
+        #     torch_dtype=torch.float32
+        # )
         model.eval()
         
         return model, tokenizer
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
-        st.error(f"Current directory: {os.getcwd()}")
+        st.error(f"Current directory: {current_dir}")
+        # st.error(f"Model path: {model_path}")
         raise e
 
 def generate_response(model, tokenizer, prompt, max_length=200):
